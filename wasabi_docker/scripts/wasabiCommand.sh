@@ -6,5 +6,4 @@ if [ -z "${TOR_HOST}" ]; then
   tor &
 fi
 
-#dotnet WalletWasabi.Gui.dll mix --wallet:$1 --mixall --keepalive
-dotnet WalletWasabi.Gui.dll mix --wallet:$1 --keepalive
+dotnet run WalletWasabi.Daemon.dll --wallet:$1

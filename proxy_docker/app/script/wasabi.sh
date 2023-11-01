@@ -27,6 +27,7 @@ send_to_wasabi() {
   local index=$1 # instance index
   local method=$2 # method
   local params=$3 # json string escaped
+  local wallet=$4 # wallet name
   trace "[send_to_wasabi] index=${index}"
   trace "[send_to_wasabi] method=${method}"
 #  trace "[send_to_wasabi] params=${params}"
@@ -43,8 +44,8 @@ send_to_wasabi() {
     return 1
   fi
 
-  trace "[send_to_wasabi] curl --config ${WASABI_RPC_CFG} -s -d \"{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"${method}\",\"params\":${params}}\" http://wasabi_${index}:18099/"
-  response=$(curl --config ${WASABI_RPC_CFG} -s -d "{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"${method}\", \"params\":${params}}" http://wasabi_${index}:18099/)
+  trace "[send_to_wasabi] curl --config ${WASABI_RPC_CFG} -s -d \"{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"${method}\",\"params\":${params}}\" http://wasabi_${index}:18099/${wallet}/"
+  response=$(curl --config ${WASABI_RPC_CFG} -s -d "{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"${method}\", \"params\":${params}}" http://wasabi_${index}:18099/${wallet})
   returncode=$?
   trace_rc ${returncode}
   trace "[send_to_wasabi] response=${response}"
@@ -75,7 +76,7 @@ smallest_balance_wasabi_index() {
   for i in `seq ${minInstanceIndex} ${maxInstanceIndex}`
   do
     # wasabi rpc: getwalletinfo
-    balance=$(send_to_wasabi ${i} getwalletinfo "[]" | jq -e ".result.balance")
+    balance=$(send_to_wasabi ${i} getwalletinfo "[]" ${WASABI_WALLET_NAME} | jq -e ".result.balance")
     returncode=$?
     trace_rc ${returncode}
 
@@ -114,7 +115,7 @@ wasabi_newaddr() {
 
   # Getting an address:
   #
-  # /app # curl -s -u "wasabi:CHANGEME" -d '{"jsonrpc":"2.0","id":"1","method":"getnewaddress","params":["t1"]}' http://127.0.0.1:18099/ | jq
+  # /app # curl -s -u "wasabi:CHANGEME" -d '{"jsonrpc":"2.0","id":"1","method":"getnewaddress","params":["t1"]}' http://127.0.0.1:18099/walletName | jq
   # {
   #   "jsonrpc": "2.0",
   #   "result": {
@@ -147,7 +148,7 @@ wasabi_newaddr() {
   fi
   trace "[wasabi_newaddr] instanceid=${instanceid}"
 
-  response=$(send_to_wasabi ${instanceid} getnewaddress "[${label}]")
+  response=$(send_to_wasabi ${instanceid} getnewaddress "[${label}]" ${WASABI_WALLET_NAME})
   returncode=$?
   trace_rc ${returncode}
 
@@ -185,7 +186,7 @@ wasabi_getbalances() {
   for i in `seq ${minInstanceIndex} ${maxInstanceIndex}`
   do
     # wasabi rpc: listunspentcoins
-    response=$(send_to_wasabi ${i} listunspentcoins "[]")
+    response=$(send_to_wasabi ${i} listunspentcoins "[]" ${WASABI_WALLET_NAME})
     returncode=$?
     trace_rc ${returncode}
 
@@ -338,11 +339,12 @@ wasabi_batchprivatetospender() {
       trace "[wasabi_batchprivatetospender] utxo_to_spend=${utxo_to_spend}"
     #  balance=$(wasabi_get_balance "{\"id\":${instanceid},\"private\":true}")
     #  trace "[wasabi_batchprivatetospender] balance=${balance}"
-      dequeue_resp=$(send_to_wasabi ${instanceid} dequeue "{ \"coins\": ${utxo_to_spend} }")
-      trace "[wasabi_batchprivatetospender] dequeue utxo_to_spend_resp ${dequeue_resp}"
+    #TODO: This endpoint doesn't exist any more. How do we handle this? stop and then send?
+      #dequeue_resp=$(send_to_wasabi ${instanceid} dequeue "{ \"coins\": ${utxo_to_spend} ${WASABI_WALLET_NAME}}" )
+      #trace "[wasabi_batchprivatetospender] dequeue utxo_to_spend_resp ${dequeue_resp}"
 
       # Call spend
-      response=$(send_to_wasabi ${instanceid} send "{\"payments\":[{\"sendto\":${toaddress},\"amount\":${amount},\"label\":\"batchprivatetospender-auto-send\",\"subtractFee\":true}],\"coins\":${utxo_to_spend},\"feeTarget\":2,\"password\":\"\"}")
+      response=$(send_to_wasabi ${instanceid} send "{\"payments\":[{\"sendto\":${toaddress},\"amount\":${amount},\"label\":\"batchprivatetospender-auto-send\",\"subtractFee\":true}],\"coins\":${utxo_to_spend},\"feeTarget\":2,\"password\":\"\"}" ${WASABI_WALLET_NAME})
       returncode=$?
       trace_rc ${returncode}
       if [ "${returncode}" -ne "0" ]; then
@@ -410,7 +412,7 @@ build_utxo_to_spend() {
   local builtUtxo
   local amounts
 
-  response=$(send_to_wasabi ${instanceid} listunspentcoins "[]")
+  response=$(send_to_wasabi ${instanceid} listunspentcoins "[]" ${WASABI_WALLET_NAME})
   returncode=$?
   trace_rc ${returncode}
   if [ "${returncode}" -ne "0" ]; then
@@ -614,11 +616,12 @@ wasabi_spend() {
     fi
     # Amount is prefixed to utxostring, let's remove it
     utxostring="[$(echo "${utxostring}" | cut -d '[' -f2)"
-    dequeue_resp=$(send_to_wasabi ${instanceid} dequeue "{ \"coins\": ${utxostring} }")
-    trace "[wasabi_spend] dequeue utxos response ${dequeue_resp}"
+    # TODO: This endpoint doesn't exist. What do we replace it with?
+    #dequeue_resp=$(send_to_wasabi ${instanceid} dequeue "{ \"coins\": ${utxostring} }" ${WASABI_WALLET_NAME})
+    #trace "[wasabi_spend] dequeue utxos response ${dequeue_resp}"
 
     # curl -s -d '{"jsonrpc":"2.0","id":"1","method":"send", "params": { "sendto": "tb1qjlls57n6kgrc6du7yx4da9utdsdaewjg339ang", "coins":[{"transactionid":"8c5ef6e0f10c68dacd548bbbcd9115b322891e27f741eb42c83ed982861ee121", "index":0}], "amount": 15000, "label": "test transaction", "feeTarget":2 }}' http://wasabi_0:18099/
-    response=$(send_to_wasabi ${instanceid} send "{\"payments\":[{\"sendto\":\"${address}\",\"amount\":${spendingAmount},\"label\":\"${label}\",\"subtractFee\":true}],\"coins\":${utxostring},\"feeTarget\":${conf_target},\"password\":\"\"}")
+    response=$(send_to_wasabi ${instanceid} send "{\"payments\":[{\"sendto\":\"${address}\",\"amount\":${spendingAmount},\"label\":\"${label}\",\"subtractFee\":true}],\"coins\":${utxostring},\"feeTarget\":${conf_target},\"password\":\"\"}" ${WASABI_WALLET_NAME})
     returncode=$?
     trace_rc ${returncode}
     if [ "${returncode}" -ne "0" ]; then
@@ -647,6 +650,107 @@ wasabi_spend() {
 
   else
     response="{\"event\":\"wasabi_spend\",\"result\":\"error\",\"message\":\"Not enough funds\"}"
+  fi
+
+  echo ${response}
+
+  return ${returncode}
+}
+
+# wasabi_payincoinjoin <requesthandler_request_string>
+# requesthandler_request_string: JSON object with "id", "private", "amount" and "address" properties: {"id":1,"private":true,"amount":0.00103440,"address":"2N8DcqzfkYi8CkYzvNNS5amoq3SbAcQNXKp" }
+# id: optional.  Will use first instance with enough funds, if not supplied.
+# returns wasabi rpc response as is
+wasabi_payincoinjoin() {
+  trace "Entering wasabi_payincoinjoin()..."
+
+  # wasabi rpc: payincoinjoin
+
+  # args:
+  # - id: integer, optional
+  # - address: string, required
+  # - amount: number in BTC, required
+
+  # If no instance id supplied, will find the first with enough funds
+  # There must be enough funds on at least one instance
+
+  # {"id":1,"amount":0.00103440,"address":"2N8DcqzfkYi8CkYzvNNS5amoq3SbAcQNXKp"}
+
+  local request=${1}
+  local returncode
+  local response
+
+  local amount
+  amount=$(echo "${request}" | jq ".amount")
+  if [ "${amount}" = "null" ]; then
+    # amount tag null but required
+    trace "[wasabi_payincoinjoin] amount is required"
+    echo "{\"event\":\"wasabi_payincoinjoin\",\"result\":\"error\",\"message\":\"amount is required\"}"
+    return 1
+  fi
+  local spendingAmount
+  spendingAmount=$(awk "BEGIN { printf(\"%.f\", ${amount}*100000000); exit }")
+  trace "[wasabi_payincoinjoin] spendingAmount=${spendingAmount}"
+
+  local address
+  address=$(echo "${request}" | jq -r ".address")
+  if [ "${address}" = "null" ]; then
+    # address tag null but required
+    trace "[wasabi_payincoinjoin] address is required"
+    echo "{\"event\":\"wasabi_payincoinjoin\",\"result\":\"error\",\"message\":\"address is required\"}"
+    return 1
+  fi
+  trace "[wasabi_payincoinjoin] address=${address}"
+
+  local instanceid
+  instanceid=$(echo "${request}" | jq ".instanceId")
+  trace "[wasabi_payincoinjoin] instanceid=${instanceid}"
+
+  local minInstanceIndex=0
+  local maxInstanceIndex=$((WASABI_INSTANCE_COUNT-1))
+
+  if [ "${instanceid}" != "null" ]; then
+    minInstanceIndex=$instanceid
+    maxInstanceIndex=$instanceid
+  fi
+
+  trace "[wasabi_payincoinjoin] minInstanceIndex=${minInstanceIndex}"
+  trace "[wasabi_payincoinjoin] maxInstanceIndex=${maxInstanceIndex}"
+
+  balances=$(wasabi_getbalances)
+  returncode=$?
+  trace_rc ${returncode}
+  if [ "${returncode}" -ne "0" ]; then
+     return "${returncode}"
+  fi
+  trace "[wasabi_payincoinjoin] balances=${balances}"
+  # .value.total or .value.private is needed ?
+  local balance_type="total"
+
+  trace "[wasabi_payincoinjoin] spendingAmount=${spendingAmount} from balance type ${balance_type}"
+  # search balances for first entry with balance type (total, or private) >= spending amount that's within instance bounds
+  instanceid=$(echo "$balances" | jq -r --arg btype "${balance_type}" --arg amount "${amount}" --arg min "${minInstanceIndex}" --arg max "${maxInstanceIndex}"  '
+  [
+    to_entries | .[] | select(
+       .value[$btype] >= ($amount | tonumber) and .key >= ($min | tostring)  and .key <= ($max | tostring)
+    )
+  ] | .[0].key')
+  trace "[wasabi_payincoinjoin] Using instance ${instanceid}"
+
+  if [ ! -z "${instanceid}" ] && [ "${instanceid}" != "null" ]; then
+    # curl -s -d '{"jsonrpc":"2.0","id":"1","method":"payincoinjoin", "params": { "address": "tb1qjlls57n6kgrc6du7yx4da9utdsdaewjg339ang",  "amount": 15000 }}' http://wasabi_0:18099/wasabi
+    response=$(send_to_wasabi ${instanceid} payincoinjoin "{\"address\":\"${address}\",\"amount\":${spendingAmount}}" ${WASABI_WALLET_NAME})
+    returncode=$?
+    trace_rc ${returncode}
+    if [ "${returncode}" -ne "0" ]; then
+      return ${returncode}
+    fi
+
+    local paymentId=$(echo ${response} | jq -r ".result")
+
+    response=$(echo ${response} | jq ".result += {\"status\":\"accepted\",\"details\":{\"address\":\"${address}\",\"amount\":\"${amount}\",\"paymentId\":${paymentId}}}")
+  else
+    response="{\"event\":\"wasabi_payincoinjoin\",\"result\":\"error\",\"message\":\"Not enough funds\"}"
   fi
 
   echo ${response}
@@ -710,7 +814,7 @@ wasabi_gettransactions() {
 
   for i in `seq ${minInstanceIndex} ${maxInstanceIndex}`
   do
-    response=$(send_to_wasabi ${i} gethistory "[]")
+    response=$(send_to_wasabi ${i} gethistory "[]" ${WASABI_WALLET_NAME})
     returncode=$?
     trace_rc ${returncode}
     if [ "${returncode}" -ne "0" ]; then
@@ -771,7 +875,7 @@ wasabi_getunspentcoins() {
 
   for i in `seq ${minInstanceIndex} ${maxInstanceIndex}`
   do
-    response=$(send_to_wasabi ${i} listunspentcoins "[]")
+    response=$(send_to_wasabi ${i} listunspentcoins "[]" ${WASABI_WALLET_NAME})
     returncode=$?
     trace_rc ${returncode}
     if [ "${returncode}" -ne "0" ]; then

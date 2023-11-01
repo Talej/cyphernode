@@ -46,15 +46,28 @@ echo "user=${user}" > ${WASABI_RPC_CFG}
 wallet_name=${WALLET_NAME:-wasabi}
 
 # check if we have a wallet file
-if [ ! -f "/root/.walletwasabi/client/Wallets/$wallet_name.json" ]; then
-  echo "Missing wallet file. Generating wallet with name $wallet_name and saving the seed words"
-  echo "" | /app/scripts/generateWallet.sh $wallet_name > "/root/.walletwasabi/client/Wallets/$wallet_name.seed"
+network=$(cat /root/.walletwasabi/client/Config.json | jq -r '.Network')
+
+if [[ $network == "TestNet" || $network == "RegTest" ]]; then
+  if [ ! -d "/root/.walletwasabi/client/Wallets/$network" ]; then
+    echo "Missing wallet directory. Creating it"
+    mkdir -p "/root/.walletwasabi/client/Wallets/$network"
+  fi
+  if [ ! -f "/root/.walletwasabi/client/Wallets/$network/$wallet_name.json" ]; then
+    echo "Missing wallet file. Generating wallet with name $wallet_name and saving the seed words"
+    /app/scripts/generateWallet.sh $wallet_name > "/root/.walletwasabi/client/Wallets/$network/$wallet_name.seed"
+  fi
+else
+  if [ ! -f "/root/.walletwasabi/client/Wallets/$wallet_name.json" ]; then
+    echo "Missing wallet file. Generating wallet with name $wallet_name and saving the seed words"
+    /app/scripts/generateWallet.sh $wallet_name > "/root/.walletwasabi/client/Wallets/$wallet_name.seed"
+  fi
 fi
 
 # From here on the wallet file exists, start mixer
-/app/scripts/checkWalletPassword.sh $wallet_name ""
+#/app/scripts/checkWalletPassword.sh $wallet_name ""
 
-if [ $? = 0 ]; then
+#if [ $? = 0 ]; then
   # If TOR_HOST is defined, it means Tor has been installed in Cyphernode setup, use it!
   if [ -n "${TOR_HOST}" ]; then
     while [ -z "${TORIP}" ]; do echo "tor not ready" ; TORIP=$(getent hosts tor | awk '{ print $1 }') ; sleep 10 ; done
@@ -68,11 +81,12 @@ if [ $? = 0 ]; then
     jq --arg torip "127.0.0.1:9050" '.TorSocks5EndPoint = $torip' /root/.walletwasabi/client/Config-ori.json > /root/.walletwasabi/client/Config.json
   fi
 
-  (while [ "${walletloaded}" != "true" ]; do sleep 5 ; echo "CYPHERNODE: Trying to load Wasabi Wallet..." ; curl -s --config ${WASABI_RPC_CFG} -d '{"jsonrpc":"2.0","id":"0","method":"selectwallet", "params":["wasabi"]}' localhost:18099 > /dev/null ; [ "$?" = "0" ] && walletloaded=true ; done ; echo "CYPHERNODE: Wasabi Wallet loaded!") &
+  #(while [ "${walletloaded}" != "true" ]; do sleep 5 ; echo "CYPHERNODE: Trying to load Wasabi Wallet..." ; curl -s --config ${WASABI_RPC_CFG} -d '{"jsonrpc":"2.0","id":"0","method":"selectwallet", "params":["wasabi"]}' localhost:18099 > /dev/null ; [ "$?" = "0" ] && walletloaded=true ; done ; echo "CYPHERNODE: Wasabi Wallet loaded!") &
+  
+  dotnet WalletWasabi.Daemon.dll --loglevel=debug --wallet=$wallet_name
+  #/app/scripts/startWasabi.sh wasabi "" &
+  #wait $!
 
-  /app/scripts/startWasabi.sh wasabi "" &
-  wait $!
-
-else
-  echo "Wrong password"
-fi
+#else
+#  echo "Wrong password"
+#fi

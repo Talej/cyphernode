@@ -1,24 +1,15 @@
-FROM mcr.microsoft.com/dotnet/core/sdk:3.1-alpine3.12 AS builder
+FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine3.18 AS builder
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 RUN apk add --no-cache git
 
-# Version v1.1.12.2
-RUN git clone -b v1.1.12.2 --recursive https://github.com/zkSNACKs/WalletWasabi.git /WalletWasabi
+# master branch
+RUN git clone --recursive https://github.com/zkSNACKs/WalletWasabi.git /WalletWasabi
 
-WORKDIR /WalletWasabi
+WORKDIR /WalletWasabi/WalletWasabi.Daemon
 
-COPY WalletGenerator /WalletGenerator
-
-WORKDIR /WalletGenerator
-
-RUN dotnet build WalletGenerator.sln -c Release -o /app/ -r linux-x64
-RUN dotnet publish WalletGenerator.sln --output /app/ -c Release --disable-parallel --no-cache /p:DebugType=none /p:DebugSymbols=false /p:ErrorReport=none
-
-WORKDIR /WalletWasabi/WalletWasabi.Gui
-
-RUN dotnet build -c Release -o /app/ -r linux-x64
-RUN dotnet publish --output /app/ -c Release --disable-parallel --no-cache /p:DebugType=none /p:DebugSymbols=false /p:ErrorReport=none
+RUN dotnet build "WalletWasabi.Daemon.csproj" -c Release -o /app/build -r linux-x64
+RUN dotnet publish "WalletWasabi.Daemon.csproj" -c Release -o /app/ --disable-parallel --no-cache /p:DebugType=none /p:DebugSymbols=false /p:ErrorReport=none
 
 # remove unused files
 #RUN rm /app/TorDaemons/tor-osx64.zip /app/TorDaemons/tor-win32.zip
@@ -26,7 +17,7 @@ RUN rm -rf /app/TorDaemons
 RUN rm -rf /app/runtimes/osx /app/runtimes/tizen-armel /app/runtimes/tizen-x86 /app/runtimes/win /app/runtimes/win-x64 /app/runtimes/win--x86
 RUN rm -rf /app/Hwi/Software/hwi-osx64.zip /app/Hwi/Software/hwi-win64
 
-FROM mcr.microsoft.com/dotnet/core/aspnet:3.1-alpine3.12
+FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine3.18
 
 ENV APPDATA=/root/.walletwasabi/client
 
