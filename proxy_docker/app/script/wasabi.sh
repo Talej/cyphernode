@@ -3,7 +3,7 @@
 #
 # USEFUL
 #
-# docker exec -it `docker ps -q -f "name=cyphernode_proxy\."` sh -c 'for i in `seq 0 1`; do echo $i: $(curl -sd "{\"instanceId\":$i,\"private\":false}" localhost:8888/wasabi_getbalance); done'
+# docker exec -it `docker ps -q -f "name=cyphernode_proxy\."` sh -c 'for i in `seq 0 1`; do echo $i: $(curl -sd "{\"instanceId\":$i,\"private\":false}" localhost:8888/wasabi_getbalance/wasabi); done'
 # docker exec -it `docker ps -q -f "name=cyphernode_proxy\."` sh -c 'for i in `seq 0 1`; do echo $i: $(curl -sd "{\"instanceId\":$i}" localhost:8888/wasabi_getnewaddress); done'
 #
 # docker exec -it `docker ps -q -f "name=cyphernode_proxy\."` sh -c 'for i in `seq 0 1`; do echo $i: $(curl -s -u "wasabi:CHANGEME" -d "{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"getnewaddress\",\"params\":[\"a\"]}" http://wasabi_$i:18099/); done'
@@ -30,11 +30,12 @@ send_to_wasabi() {
   local wallet=$4 # wallet name
   trace "[send_to_wasabi] index=${index}"
   trace "[send_to_wasabi] method=${method}"
+  trace "[send_to_wasabi] wallet=${wallet}"
 #  trace "[send_to_wasabi] params=${params}"
 
   local response
 
-  if [ "$#" -ne 3 ]; then
+  if [ "$#" -ne 4 ]; then
       echo "Wrong number of arguments"
       return 1
   fi
@@ -147,6 +148,7 @@ wasabi_newaddr() {
     instanceid=$(smallest_balance_wasabi_index)
   fi
   trace "[wasabi_newaddr] instanceid=${instanceid}"
+  trace "[wasabi_newaddr] wallet=${WASABI_WALLET_NAME}"
 
   response=$(send_to_wasabi ${instanceid} getnewaddress "[${label}]" ${WASABI_WALLET_NAME})
   returncode=$?
@@ -748,7 +750,7 @@ wasabi_payincoinjoin() {
 
     local paymentId=$(echo ${response} | jq -r ".result")
 
-    response=$(echo ${response} | jq ".result += {\"status\":\"accepted\",\"details\":{\"address\":\"${address}\",\"amount\":\"${amount}\",\"paymentId\":${paymentId}}}")
+    response=$(echo ${response} | jq ".result = {\"status\":\"accepted\",\"details\":{\"address\":\"${address}\",\"amount\":\"${amount}\",\"paymentId\":\"${paymentId}\"}}")
   else
     response="{\"event\":\"wasabi_payincoinjoin\",\"result\":\"error\",\"message\":\"Not enough funds\"}"
   fi
