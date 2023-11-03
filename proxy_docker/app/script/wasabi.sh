@@ -205,7 +205,7 @@ wasabi_getbalances() {
 
     # When calling wasabi_getnewaddress, there's always a label ("unknown" when not specified) so we assume when a UTXO has
     # a label, has an anonset of 1 and is unconfirmed, it is an unconfirmed deposit waiting to be confirmed to be part of a mix.
-    rcvd_0conf=$(echo "${response}" | jq ".result | map(select(.anonymitySet == 1 and .confirmed == false and .label != \"\") | .amount) | add")
+    rcvd_0conf=$(echo "${response}" | jq ".result | map(select(.anonymityScore == 1 and .confirmed == false and .label != \"\") | .amount) | add")
     if [ "${rcvd_0conf}" = "null" ]; then
       rcvd_0conf=0
     fi
@@ -216,7 +216,7 @@ wasabi_getbalances() {
 
     # When calling wasabi_getnewaddress, there's always a label ("unknown" when not specified) so we assume when a UTXO has
     # no label with an anonset less than MIXUNTIL, or is confirmed with an anonset of 1, it is ready to be part of a mix.
-    mixing=$(echo "${response}" | jq ".result | map(select(.anonymitySet == 1 and .confirmed == true or .label == \"\" and .anonymitySet < ${minanonset}) | .amount) | add")
+    mixing=$(echo "${response}" | jq ".result | map(select(.anonymityScore == 1 and .confirmed == true or .label == \"\" and .anonymityScore < ${minanonset}) | .amount) | add")
     if [ "${mixing}" = "null" ]; then
       mixing=0
     fi
@@ -226,7 +226,7 @@ wasabi_getbalances() {
     trace "[wasabi_getbalances] mixing_total=${mixing_total}"
 
     # As soon as a UTXO has an anonset of MIXUNTIL, it is considered private.
-    priv_bal=$(echo "${response}" | jq ".result | map(select(.anonymitySet >= ${minanonset}) | .amount) | add")
+    priv_bal=$(echo "${response}" | jq ".result | map(select(.anonymityScore >= ${minanonset}) | .amount) | add")
     if [ "${priv_bal}" = "null" ]; then
       priv_bal=0
     fi
@@ -274,7 +274,7 @@ wasabi_getbalances() {
 }
 
 # wasabi_batchprivatetospender
-# Will send all mixed coins (with anonymitySet > threshold) to spending wallet.
+# Will send all mixed coins (with anonymityScore > threshold) to spending wallet.
 wasabi_batchprivatetospender() {
   trace "Entering wasabi_batchprivatetospender()..."
 
@@ -321,7 +321,7 @@ wasabi_batchprivatetospender() {
 
   for instanceid in `seq 0 $((WASABI_INSTANCE_COUNT-1))`
   do
-    # Get list of UTXO with anonymityset > configured threshold
+    # Get list of UTXO with anonymityscore > configured threshold
     # build_utxo_to_spend <spendingAmount> <anonset> <instanceid>
     utxo_to_spend=$(build_utxo_to_spend 0 ${minanonset} ${instanceid})
     # Amount is prefixed to utxostring, let's consider it
@@ -374,7 +374,7 @@ build_utxo_to_spend() {
   #       "txid": "a4ac6530d82fd16e724c1ed8082890bb9dd33bf817c3504ec6e2722aaaa92439",
   #       "index": 0,
   #       "amount": 20000000,
-  #       "anonymitySet": 1,
+  #       "anonymityScore": 1,
   #       "confirmed": true,
   #       "label": "t1",
   #       "keyPath": "84'/0'/0'/0/21",
@@ -387,13 +387,13 @@ build_utxo_to_spend() {
   # for i in 0 1 2 3 4; do echo $i = $(curl -s -u "wasabi:CHANGEME" -d '{"jsonrpc":"2.0","id":"1","method":"listunspentcoins","params":[]}' http://wasabi_$i:18099/); done
 
   #
-  # How to get utxo with anonymitySet > 25
+  # How to get utxo with anonymityScore > 25
   #
-  # curl -s -u "wasabi:CHANGEME" -d '{"jsonrpc":"2.0","id":"135","method":"listunspentcoins","params":[]}' http://wasabi_0:18099/ | jq ".result | map(select(.anonymitySet > 25))"
+  # curl -s -u "wasabi:CHANGEME" -d '{"jsonrpc":"2.0","id":"135","method":"listunspentcoins","params":[]}' http://wasabi_0:18099/ | jq ".result | map(select(.anonymityScore > 25))"
   #
-  # How to add up amounts of utxo with anonymitySet > 25
+  # How to add up amounts of utxo with anonymityScore > 25
   #
-  # curl -s -u "wasabi:CHANGEME" -d '{"jsonrpc":"2.0","id":"135","method":"listunspentcoins","params":[]}' http://wasabi_0:18099/ | jq ".result | map(select(.anonymitySet > 25) | .amount) | add"
+  # curl -s -u "wasabi:CHANGEME" -d '{"jsonrpc":"2.0","id":"135","method":"listunspentcoins","params":[]}' http://wasabi_0:18099/ | jq ".result | map(select(.anonymityScore > 25) | .amount) | add"
   #
 
   # Spend
@@ -421,8 +421,8 @@ build_utxo_to_spend() {
     return ${returncode}
   fi
 
-  # We only want mixed coins with correct minimum anonymitySet.
-  utxos=$(echo "${response}" | jq -Mac ".result[] | select(.anonymitySet >= ${anonset}) | {\"transactionid\": .txid,index,amount}")
+  # We only want mixed coins with correct minimum anonymityScore.
+  utxos=$(echo "${response}" | jq -Mac ".result[] | select(.anonymityScore >= ${anonset}) | {\"transactionid\": .txid,index,amount}")
   trace "[build_utxo_to_spend] utxos=${utxos}"
 
   # We'll use this amount list to increase up to the amount to spend in the following loop.
@@ -503,7 +503,7 @@ wasabi_spend() {
   #       "txid": "a4ac6530d82fd16e724c1ed8082890bb9dd33bf817c3504ec6e2722aaaa92439",
   #       "index": 0,
   #       "amount": 20000000,
-  #       "anonymitySet": 1,
+  #       "anonymityScore": 1,
   #       "confirmed": false,
   #       "label": "t1",
   #       "keyPath": "84'/0'/0'/0/21",
@@ -614,7 +614,7 @@ wasabi_spend() {
       utxostring=$(build_utxo_to_spend ${spendingAmount} ${minanonset} ${instanceid})
     else
       trace "[wasabi_spend] Spending private and non-private coins"
-      utxostring=$(build_utxo_to_spend ${spendingAmount} 0 ${instanceid})
+      utxostring=$(build_utxo_to_spend ${spendingAmount} 0 ${instanceid})  
     fi
     # Amount is prefixed to utxostring, let's remove it
     utxostring="[$(echo "${utxostring}" | cut -d '[' -f2)"
