@@ -457,6 +457,14 @@ install_docker() {
         next
       fi
     fi
+    if [[ $TOR_WASABIBACKEND == true ]]; then
+      if [ ! -d $TOR_DATAPATH/wasabibackend ]; then
+        step "   [32mcreate[0m $TOR_DATAPATH/wasabibackend"
+        sudo_if_required mkdir -p $TOR_DATAPATH/wasabibackend/hidden_service
+        sudo_if_required chmod 700 $TOR_DATAPATH/wasabibackend/hidden_service
+        next
+      fi
+    fi
 
     copy_file $cyphernodeconf_filepath/tor/torrc $TOR_DATAPATH/torrc 1 $SUDO_REQUIRED
     copy_file $cyphernodeconf_filepath/tor/traefik/hidden_service/hs_ed25519_secret_key $TOR_DATAPATH/traefik/hidden_service/hs_ed25519_secret_key 1 $SUDO_REQUIRED
@@ -472,6 +480,13 @@ install_docker() {
       copy_file $cyphernodeconf_filepath/tor/bitcoin/hidden_service/hs_ed25519_secret_key $TOR_DATAPATH/bitcoin/hidden_service/hs_ed25519_secret_key 1 $SUDO_REQUIRED
       copy_file $cyphernodeconf_filepath/tor/bitcoin/hidden_service/hs_ed25519_public_key $TOR_DATAPATH/bitcoin/hidden_service/hs_ed25519_public_key 1 $SUDO_REQUIRED
       copy_file $cyphernodeconf_filepath/tor/bitcoin/hidden_service/hostname $TOR_DATAPATH/bitcoin/hidden_service/hostname 1 $SUDO_REQUIRED
+    fi
+    if [[ $TOR_WASABIBACKEND == true ]]; then
+      copy_file $cyphernodeconf_filepath/tor/wasabibackend/hidden_service/hs_ed25519_secret_key $TOR_DATAPATH/wasabibackend/hidden_service/hs_ed25519_secret_key 1 $SUDO_REQUIRED
+      copy_file $cyphernodeconf_filepath/tor/wasabibackend/hidden_service/hs_ed25519_public_key $TOR_DATAPATH/wasabibackend/hidden_service/hs_ed25519_public_key 1 $SUDO_REQUIRED
+      copy_file $cyphernodeconf_filepath/tor/wasabibackend/hidden_service/hostname $TOR_DATAPATH/wasabibackend/hidden_service/hostname 1 $SUDO_REQUIRED
+      sudo_if_required mkdir -p $TOR_DATAPATH/.tor
+      copy_file $cyphernodeconf_filepath/tor/control_auth_cookie $TOR_DATAPATH/.tor/control_auth_cookie 1 $SUDO_REQUIRED
     fi
   fi
 
@@ -899,10 +914,10 @@ AUTOSTART=0
 
 # CYPHERNODE VERSION "v0.9.0-dev"
 SETUP_VERSION="v0.9.0-dev"
-CONF_VERSION="v0.9.0-dev"
+CONF_VERSION="v0.10.0-dev"
 GATEKEEPER_VERSION="v0.9.0-dev"
-TOR_VERSION="v0.9.0-dev"
-PROXY_VERSION="v0.9.0-dev"
+TOR_VERSION="v0.10.0-dev"
+PROXY_VERSION="v0.10.0-dev"
 NOTIFIER_VERSION="v0.9.0-dev"
 PROXYCRON_VERSION="v0.9.0-dev"
 OTSCLIENT_VERSION="v0.9.0-dev"

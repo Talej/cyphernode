@@ -210,18 +210,20 @@
           "tor_otsoperations",
           "tor_otswebhooks",
           "tor_addrwatcheswebhooks",
-          "tor_txidwatcheswebhooks"
+          "tor_txidwatcheswebhooks",
+          "tor_wasabibackend"
         ],
         "title": "The Torified feature",
         "default": "",
         "examples": [
           "tor_traefik",
-          "tor_bitcoin",
+          "tor_bitcointor_bitcoin",
           "tor_lightning",
           "tor_otsoperations",
           "tor_otswebhooks",
           "tor_addrwatcheswebhooks",
-          "tor_txidwatcheswebhooks"
+          "tor_txidwatcheswebhooks",
+          "tor_wasabibackend"
         ]
       }
     },

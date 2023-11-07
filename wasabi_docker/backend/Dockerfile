@@ -1,8 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine3.18 AS builder
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 
-RUN apk add --no-cache git patch
-
 # master branch 
 RUN git clone --recursive https://github.com/zkSNACKs/WalletWasabi.git /WalletWasabi
 

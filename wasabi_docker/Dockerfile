@@ -1,10 +1,16 @@
 FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine3.18 AS builder
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 
-RUN apk add --no-cache git
+RUN apk add --no-cache git patch
 
 # master branch
 RUN git clone --recursive https://github.com/zkSNACKs/WalletWasabi.git /WalletWasabi
+
+WORKDIR /WalletWasabi
+
+COPY patches/TorSettings.patch .
+RUN patch WalletWasabi/Tor/TorSettings.cs -i TorSettings.patch
+RUN rm TorSettings.patch
 
 WORKDIR /WalletWasabi/WalletWasabi.Daemon
 
@@ -12,18 +18,17 @@ RUN dotnet build "WalletWasabi.Daemon.csproj" -c Release -o /app/build -r linux-
 RUN dotnet publish "WalletWasabi.Daemon.csproj" -c Release -o /app/ --disable-parallel --no-cache /p:DebugType=none /p:DebugSymbols=false /p:ErrorReport=none
 
 # remove unused files
-#RUN rm /app/TorDaemons/tor-osx64.zip /app/TorDaemons/tor-win32.zip
-RUN rm -rf /app/TorDaemons
-RUN rm -rf /app/runtimes/osx /app/runtimes/tizen-armel /app/runtimes/tizen-x86 /app/runtimes/win /app/runtimes/win-x64 /app/runtimes/win--x86
-RUN rm -rf /app/Hwi/Software/hwi-osx64.zip /app/Hwi/Software/hwi-win64
+RUN rm -rf /app/runtimes/osx /app/runtimes/osx-x64 /app/runtimes/osx-arm64 /app/runtimes/tizen-armel /app/runtimes/tizen-x86 /app/runtimes/win /app/runtimes/win-x64 /app/runtimes/win-x86 /app/runtimes/win-arm64 /app/runtimes/win-arm
+RUN rm -rf /app/Microservices/Binaries/osx64 /app/Microservices/Binaries/win64
+RUN rm -rf /app/Microservices/Binaries/lin64/bitcoind /app/Microservices/Binaries/lin64/hwi
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine3.18
 
 ENV APPDATA=/root/.walletwasabi/client
 
 RUN apk add --no-cache --update \
+    gcompat \
     expect \
-    tor \
     icu \
     curl \
     jq \

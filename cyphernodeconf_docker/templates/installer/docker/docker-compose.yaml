@@ -405,9 +405,11 @@ services:
     <% if ( features.indexOf('tor') !== -1 ) { %>
       - "TOR_HOST=tor"
       - "TOR_PORT=9050"
+      - "TOR_CONTROL_PORT=9051"
     <% } %>
     volumes:
       - "<%= wasabi_datapath %>/<%= index %>:/root/.walletwasabi/client"
+      - "<%= tor_datapath %>/.tor:/root/.tor:ro"
       - container_monitor:/container_monitor:ro
     stop_grace_period: 30s
     networks:
@@ -417,7 +419,7 @@ services:
     <% } %>
     depends_on:
       - bitcoin
-      <%   if ( net === 'regtest' ) { %>
+      <%   if ( net === 'regtest' | net === 'testnet' ) { %>
       - wasabi-backend
       <%   } %>
 #    deploy:

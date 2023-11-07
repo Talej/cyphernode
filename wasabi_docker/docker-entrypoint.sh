@@ -48,6 +48,13 @@ wallet_name=${WALLET_NAME:-wasabi}
 # check if we have a wallet file
 network=$(cat /root/.walletwasabi/client/Config.json | jq -r '.Network')
 
+# If TOR_HOST is defined, it means Tor has been installed in Cyphernode setup, use it!
+if [ -n "${TOR_HOST}" ]; then
+  while [ -z "${TOR_IP}" ]; do echo "tor not ready" ; TOR_IP=$(getent hosts tor | awk '{ print $1 }') ; sleep 10 ; done
+  echo "tor ready at IP ${TOR_IP}"
+  cp /root/.tor/control_auth_cookie /root/.walletwasabi/client/control_auth_cookie
+fi
+
 if [[ $network == "TestNet" || $network == "RegTest" ]]; then
   if [ ! -d "/root/.walletwasabi/client/Wallets/$network" ]; then
     echo "Missing wallet directory. Creating it"
@@ -63,30 +70,6 @@ else
     /app/scripts/generateWallet.sh $wallet_name > "/root/.walletwasabi/client/Wallets/$wallet_name.seed"
   fi
 fi
-
-# From here on the wallet file exists, start mixer
-#/app/scripts/checkWalletPassword.sh $wallet_name ""
-
-#if [ $? = 0 ]; then
-  # If TOR_HOST is defined, it means Tor has been installed in Cyphernode setup, use it!
-  if [ -n "${TOR_HOST}" ]; then
-    while [ -z "${TORIP}" ]; do echo "tor not ready" ; TORIP=$(getent hosts tor | awk '{ print $1 }') ; sleep 10 ; done
-    echo "tor ready at IP ${TORIP}"
-    cp /root/.walletwasabi/client/Config.json /root/.walletwasabi/client/Config-ori.json
-    # Wasabi needs an IP address as the Tor socks5 endpoint, unfortunately
-    jq --arg torip "${TORIP}:${TOR_PORT}" '.TorSocks5EndPoint = $torip' /root/.walletwasabi/client/Config-ori.json > /root/.walletwasabi/client/Config.json
-  else
-    echo "Tor will be launched locally with Wasabi"
-    cp /root/.walletwasabi/client/Config.json /root/.walletwasabi/client/Config-ori.json
-    jq --arg torip "127.0.0.1:9050" '.TorSocks5EndPoint = $torip' /root/.walletwasabi/client/Config-ori.json > /root/.walletwasabi/client/Config.json
-  fi
-
-  #(while [ "${walletloaded}" != "true" ]; do sleep 5 ; echo "CYPHERNODE: Trying to load Wasabi Wallet..." ; curl -s --config ${WASABI_RPC_CFG} -d '{"jsonrpc":"2.0","id":"0","method":"selectwallet", "params":["wasabi"]}' localhost:18099 > /dev/null ; [ "$?" = "0" ] && walletloaded=true ; done ; echo "CYPHERNODE: Wasabi Wallet loaded!") &
   
-  dotnet WalletWasabi.Daemon.dll --loglevel=debug --wallet=$wallet_name
-  #/app/scripts/startWasabi.sh wasabi "" &
-  #wait $!
-
-#else
-#  echo "Wrong password"
-#fi
+dotnet WalletWasabi.Daemon.dll --wallet=$wallet_name &
+wait $!

@@ -3,10 +3,10 @@
 TRACING=1
 
 # CYPHERNODE VERSION "v0.9.0-dev"
-CONF_VERSION="v0.9.0-dev-local"
+CONF_VERSION="v0.10.0-dev-local"
 GATEKEEPER_VERSION="v0.9.0-dev-local"
-TOR_VERSION="v0.9.0-dev-local"
-PROXY_VERSION="v0.9.0-dev-local"
+TOR_VERSION="v0.10.0-dev-local"
+PROXY_VERSION="v0.10.0-dev-local"
 NOTIFIER_VERSION="v0.9.0-dev-local"
 PROXYCRON_VERSION="v0.9.0-dev-local"
 OTSCLIENT_VERSION="v0.9.0-dev-local"
